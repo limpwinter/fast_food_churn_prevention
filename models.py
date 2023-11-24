@@ -88,3 +88,5 @@ class RandomForestModel(BaseModel):
 
     def predict(self, data: npt.NDArray) -> npt.NDArray:
         return self.model.predict(data)
+
+
