@@ -7,3 +7,5 @@ __pycache__/
 tests/.pytest_cache
 
 .DS_Store
+/test_dataset_hackaton2023_test.parquet
+/train_dataset_hackaton2023_train.parquet
