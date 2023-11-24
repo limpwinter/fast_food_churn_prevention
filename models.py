@@ -87,6 +87,8 @@ class RandomForestModel(BaseModel):
         return self.model.predict(data)
 
 
+
+
 class TwoLevelModel:
     def __init__(
             self,
@@ -96,10 +98,11 @@ class TwoLevelModel:
             test_data: pd.DataFrame,
             train_bin_labels: pd.Series,
             train_float_labels: pd.Series,
-    ):  # TODO init data
+    ):
         self.classifier: BaseModel = classifier
         self.regressor: BaseModel = regressor
         self.train_data = train_data.values
+        self.indices = test_data.index
         self.test_data = test_data.values
         self.train_bin_labels = train_bin_labels.values
         self.train_float_labels = train_float_labels.values
@@ -112,7 +115,7 @@ class TwoLevelModel:
         self.data_for_regression = self.train_data[self.train_bin_predictions == 1]
         self.regressor.fit(
             self.data_for_regression,
-            self.train_float_labels[self.train_bin_labels == 1]
+            self.train_float_labels[self.train_bin_predictions == 1]
         )
         return self
 
@@ -130,7 +133,7 @@ class TwoLevelModel:
     def get_dataframe_prediction(self):
         test_bin_predictions, test_float_predictions = self.predict()
         return pd.DataFrame({
-            'customer_id': self.test_data['customer_id'],
+            'customer_id': self.indices,
             'date_diff_post': test_float_predictions,
             'buy_post': test_bin_predictions
         })

@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 import typing as tp
 from numpy.typing import NDArray
+from sklearn.metrics import f1_score, mean_squared_error, roc_auc_score
+from sklearn.model_selection import cross_val_score
 
 
 class MetaInfo:
@@ -72,3 +74,66 @@ class MetaInfo:
             .drop_duplicates() \
             .set_index('customer_id') \
             .sort_index()
+
+    def f_score(self) -> float:
+        if self.last_binary_labels and self.last_class_predictions:
+            print(
+                f"calculate prediction for f1 score first.\n"
+                f"{'self.last_binary_labels is None' if self.last_binary_labels is None else ''}"
+                f"{'self.last_predicted_classes is None' if self.last_class_predictions is None else ''}"
+            )
+            return -1.0
+        return f1_score(self.last_binary_labels, self.last_class_predictions)
+
+    def rmse(self) -> float:
+        return np.sqrt(
+            mean_squared_error(
+                self.last_float_labels,
+                self.last_float_predictions
+            )
+        )
+
+    def roc_auc(self) -> float:
+        return roc_auc_score(
+            self.last_binary_labels,
+            self.last_predicted_proba[:, 1]
+        )
+
+
+def rmse(y_true, y_pred):
+    return np.sqrt(mean_squared_error(y_true, y_pred))
+
+
+def f1(y_true, y_pred):
+    return f1_score(y_true, y_pred)
+
+
+def roc_auc(y_true, y_pred):
+    return roc_auc_score(y_true, y_pred)
+
+
+class Wrapper:
+    def __init__(self, model, X_train, y_train, X_test):
+        self.model = model
+        self.X_train = X_train
+        self.y_train = y_train
+        self.X_test = X_test
+        self.predictions = None
+        self.metrics: list[str] = ["f1_macro", "f1", "roc_auc"]
+
+    def crossval(self, cv=5):
+        results = {}
+        for metric in self.metrics:
+            scores = cross_val_score(self.model, self.X_train, self.y_train, cv=cv, scoring=metric)
+            mean_metric = np.mean(scores)
+            results[metric] = mean_metric
+        return results
+
+    def fit(self):
+        """Fit the model on the training data."""
+        self.model.fit(self.X_train, self.y_train)
+
+    def predict(self):
+        """Make predictions on the test data."""
+        self.predictions = self.model.predict(self.X_test)
+        return self.predictions
