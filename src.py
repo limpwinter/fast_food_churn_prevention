@@ -3,7 +3,6 @@ import numpy as np
 import typing as tp
 from numpy.typing import NDArray
 
-
 class MetaInfo:
     # TODO rename
     def __init__(self, dataframe: pd.DataFrame, fill_churn: tp.Optional[int] = None):
@@ -63,12 +62,10 @@ class MetaInfo:
         )
 
         return meta_features \
-            .set_index('customer_id') \
-            .sort_index()
-
+            .set_index('customer_id')
+        
     def get_labels(self) -> pd.DataFrame:
         return self.df[['customer_id', 'date_diff_post', 'buy_post']] \
             .fillna(self.fill_churn) \
             .drop_duplicates() \
-            .set_index('customer_id') \
-            .sort_index()
+            .set_index('customer_id')
