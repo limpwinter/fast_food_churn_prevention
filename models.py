@@ -8,6 +8,7 @@ from catboost import CatBoostClassifier, CatBoostRegressor
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.base import ClassifierMixin
 from sklearn.metrics import roc_auc_score
+import pandas as pd
 
 
 class BaseModel(ClassifierMixin):
@@ -19,7 +20,9 @@ class BaseModel(ClassifierMixin):
 
         self.last_binary_labels: tp.Optional[npt.NDArray[int]] = None
         self.last_float_labels: tp.Optional[npt.NDArray[float]] = None
-    def fit(self):
+
+    def fit(self, data: npt.NDArray, labels: npt.NDArray) -> "BaseModel":
+        raise NotImplementedError
 
     def f_score(self) -> float:
         if self.last_binary_labels and self.last_class_predictions:
@@ -83,11 +86,51 @@ class RandomForestModel(BaseModel):
     def predict(self, data: npt.NDArray) -> npt.NDArray:
         return self.model.predict(data)
 
+
 class TwoLevelModel:
-    def __init__(self, classifier, regressor):
-        self.classifier:BaseModel = classifier
-        self.regressor:BaseModel = regressor
-    def fit(self, train_data, train_labels)->'TwoLevelModel':
-        self.classifier.fit(X=train_data,y=)
+    def __init__(
+            self,
+            classifier,
+            regressor,
+            train_data: pd.DataFrame,
+            test_data: pd.DataFrame,
+            train_bin_labels: pd.Series,
+            train_float_labels: pd.Series,
+    ):  # TODO init data
+        self.classifier: BaseModel = classifier
+        self.regressor: BaseModel = regressor
+        self.train_data = train_data.values
+        self.test_data = test_data.values
+        self.train_bin_labels = train_bin_labels.values
+        self.train_float_labels = train_float_labels.values
+
+        self.data_for_regression = None
+
+    def fit(self) -> 'TwoLevelModel':
+        self.classifier.fit(self.train_data, self.train_bin_labels)
+        self.train_bin_predictions = self.classifier.predict(self.train_data)
+        self.data_for_regression = self.train_data[self.train_bin_predictions == 1]
+        self.regressor.fit(
+            self.data_for_regression,
+            self.train_float_labels[self.train_bin_labels == 1]
+        )
         return self
+
     def predict(self):
+        test_bin_predictions = self.classifier.predict(self.test_data)  # [n, 1]
+
+        regression_indices = np.where(test_bin_predictions == 1)  # [k,]
+        test_float_predictions = self.regressor.predict(self.test_data[regression_indices])  # TODO maybee .loc
+
+        all_test_float_predictions = np.zeros(test_bin_predictions.shape)
+        all_test_float_predictions[regression_indices] = test_float_predictions
+
+        return test_bin_predictions, all_test_float_predictions.astype(int)
+
+    def get_dataframe_prediction(self):
+        test_bin_predictions, test_float_predictions = self.predict()
+        return pd.DataFrame({
+            'customer_id': self.test_data['customer_id'],
+            'date_diff_post': test_float_predictions,
+            'buy_post': test_bin_predictions
+        })
