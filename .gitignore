@@ -5,6 +5,7 @@
 /catboost_info
 __pycache__/
 tests/.pytest_cache
+/venv
 
 .DS_Store
 /test_dataset_hackaton2023_test.parquet
