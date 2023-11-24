@@ -6,27 +6,20 @@ import numpy as np
 from sklearn.metrics import f1_score, mean_squared_error, roc_auc_score
 from catboost import CatBoostClassifier, CatBoostRegressor
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.base import ClassifierMixin
+from sklearn.metrics import roc_auc_score
 
 
-class BaseModel(ABC):
+class BaseModel(ClassifierMixin):
     def __init__(self, *params: tp.Any):
         self.last_predicted_proba: tp.Optional[npt.NDArray[float]] = None
         self.last_class_predictions: tp.Optional[npt.NDArray[int]] = None
-        self.last_binary_labels: tp.Optional[npt.NDArray[int]] = None
-        self.last_float_labels: tp.Optional[npt.NDArray[float]] = None
+
         self.last_float_predictions = None
 
-    @abstractmethod
-    def fit(self, data: npt.NDArray, labels: npt.NDArray) -> "BaseModel":
-        pass
-
-    @abstractmethod
-    def predict(self, data: npt.NDArray) -> npt.NDArray:
-        pass
-
-    @abstractmethod
-    def predict_proba(self, data: npt.NDArray) -> npt.NDArray:
-        pass
+        self.last_binary_labels: tp.Optional[npt.NDArray[int]] = None
+        self.last_float_labels: tp.Optional[npt.NDArray[float]] = None
+    def fit(self):
 
     def f_score(self) -> float:
         if self.last_binary_labels and self.last_class_predictions:
@@ -47,7 +40,10 @@ class BaseModel(ABC):
         )
 
     def roc_auc(self) -> float:
-        raise NotImplementedError
+        return roc_auc_score(
+            self.last_binary_labels,
+            self.last_predicted_proba[:, 1]
+        )
 
 
 class CatBoostModel(BaseModel):
@@ -86,3 +82,12 @@ class RandomForestModel(BaseModel):
 
     def predict(self, data: npt.NDArray) -> npt.NDArray:
         return self.model.predict(data)
+
+class TwoLevelModel:
+    def __init__(self, classifier, regressor):
+        self.classifier:BaseModel = classifier
+        self.regressor:BaseModel = regressor
+    def fit(self, train_data, train_labels)->'TwoLevelModel':
+        self.classifier.fit(X=train_data,y=)
+        return self
+    def predict(self):
