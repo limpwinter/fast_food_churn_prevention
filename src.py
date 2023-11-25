@@ -14,7 +14,7 @@ class MetaInfo:
         self.fill_churn = fill_churn if fill_churn else 61
         self.df = dataframe
         self.customers: NDArray[np.int64] = self.df['customer_id'].unique()
-        self.grouped_by_customer = self.df.groupby('customer_id')
+        # self.grouped_by_customer = grouped
 
     def num_unique_places(self, col_name: str) -> pd.Series:
         return self.grouped_by_customer['ownareaall_sqm'].nunique().rename(col_name)
@@ -35,34 +35,160 @@ class MetaInfo:
     #     prices: pd.Series = self.df.groupby('dish_name')['revenue'].median()
     #     self.df
 
-    def unique_days(self, col_name: str) -> pd.Series:
-        self.df['startdatetime_day'] = self.df['startdatetime'].dt.floor('D')
-        self.grouped_by_customer = self.df.groupby('customer_id')
-        # del self.df['startdatetime_day']
-        return self.df.groupby('customer_id')['startdatetime_day'].nunique().rename(col_name)
+    # def unique_days(self, col_name: str) -> pd.Series:
+    #     self.df['startdatetime_day'] = self.df['startdatetime'].dt.floor('D')
+    #     self.grouped_by_customer = grouped
+    #     # del self.df['startdatetime_day']
+    #     return grouped['startdatetime_day'].nunique().rename(col_name)
+
+    # def generate_meta_features1(self) -> pd.DataFrame:
+    #     meta_features = pd.DataFrame()
+    #     meta_features['customer_id'] = self.customers
+    #     meta_features = pd.merge(
+    #         meta_features,
+    #         self.num_unique_places("unique_places"), on='customer_id', how='left'
+    #     )
+    #     meta_features = pd.merge(
+    #         meta_features,
+    #         self.num_orders("orders_count"), on='customer_id', how='left'
+    #     )
+    #     meta_features = pd.merge(
+    #         meta_features, self.total_spend_money("total_spend"), on='customer_id', how='left'
+    #     )
+    #     meta_features = pd.merge(
+    #         meta_features,
+    #         self.avg_spend_money_per_order("avg_bill"), on='customer_id', how='left'
+    #     )
+    #     meta_features = pd.merge(
+    #         meta_features,
+    #         self.unique_days("unique_days"), on='customer_id', how='left'
+    #     )
+    #
+    #     return meta_features \
+    #         .set_index('customer_id') \
+    #         .sort_index()
 
     def generate_meta_features(self) -> pd.DataFrame:
         meta_features = pd.DataFrame()
         meta_features['customer_id'] = self.customers
-        meta_features = pd.merge(
-            meta_features,
-            self.num_unique_places("unique_places"), on='customer_id', how='left'
-        )
-        meta_features = pd.merge(
-            meta_features,
-            self.num_orders("orders_count"), on='customer_id', how='left'
-        )
-        meta_features = pd.merge(
-            meta_features, self.total_spend_money("total_spend"), on='customer_id', how='left'
-        )
-        meta_features = pd.merge(
-            meta_features,
-            self.avg_spend_money_per_order("avg_bill"), on='customer_id', how='left'
-        )
-        meta_features = pd.merge(
-            meta_features,
-            self.unique_days("unique_days"), on='customer_id', how='left'
-        )
+        # meta_features = pd.merge(
+        #     meta_features,
+        #     self.num_unique_places("unique_places"), on='customer_id', how='left'
+        # )
+        # meta_features = pd.merge(
+        #     meta_features,
+        #     self.num_orders("orders_count"), on='customer_id', how='left'
+        # )
+        # meta_features = pd.merge(
+        #     meta_features, self.total_spend_money("total_spend"), on='customer_id', how='left'
+        # )
+        # meta_features = pd.merge(
+        #     meta_features,
+        #     self.avg_spend_money_per_order("avg_bill"), on='customer_id', how='left'
+        # )
+        # meta_features = pd.merge(
+        #     meta_features,
+        #     self.unique_days("unique_days"), on='customer_id', how='left'
+        # )
+        grouped = self.df.groupby('customer_id')
+        self.df['visit_year'] = self.df['startdatetime'].dt.year
+        self.df['visit_month'] = self.df['startdatetime'].dt.month
+        self.df['visit_date'] = self.df['startdatetime'].dt.date
+
+        # Revenue features
+        sum_revenue_abs = grouped.revenue.sum().rename('sum_revenue_abs')
+        meta_features = pd.merge(meta_features, sum_revenue_abs, on='customer_id', how='left')
+
+        sum_revenue_log = np.log(1 + grouped.revenue.sum()).rename('sum_revenue_log')
+        meta_features = pd.merge(meta_features, sum_revenue_log, on='customer_id', how='left')
+
+        revenue_max = grouped.revenue.max().rename('revenue_max')
+        meta_features = pd.merge(meta_features, revenue_max, on='customer_id', how='left')
+
+        revenue_mean = grouped.revenue.mean().rename('revenue_mean')
+        meta_features = pd.merge(meta_features, revenue_mean, on='customer_id', how='left')
+
+        revenue_min = grouped.revenue.min().rename('revenue_min')
+        meta_features = pd.merge(meta_features, revenue_min, on='customer_id', how='left')
+
+        revenue_max_log = np.log(1 + grouped.revenue.max()).rename('revenue_max_log')
+        meta_features = pd.merge(meta_features, revenue_max_log, on='customer_id', how='left')
+
+        revenue_mean_log = np.log(1 + grouped.revenue.mean()).rename('revenue_mean_log')
+        meta_features = pd.merge(meta_features, revenue_mean_log, on='customer_id', how='left')
+
+        revenue_min_log = np.log(1 + grouped.revenue.min()).rename('revenue_min_log')
+        meta_features = pd.merge(meta_features, revenue_min_log, on='customer_id', how='left')
+
+        year_max = grouped.visit_year.max().rename('year_max')
+        meta_features = pd.merge(meta_features, year_max, on='customer_id', how='left')
+
+        year_median = grouped.visit_year.median().astype(int).rename('year_median')
+        meta_features = pd.merge(meta_features, year_median, on='customer_id', how='left')
+
+        year_min = grouped.visit_year.min().rename('year_min')
+        meta_features = pd.merge(meta_features, year_min, on='customer_id', how='left')
+
+        month_max = grouped.visit_month.max().rename('month_max')
+        meta_features = pd.merge(meta_features, month_max, on='customer_id', how='left')
+
+        month_median = grouped.visit_month.median().astype(int).rename('month_median')
+        meta_features = pd.merge(meta_features, month_median, on='customer_id', how='left')
+
+        month_min = grouped.visit_month.min().rename('month_min')
+        meta_features = pd.merge(meta_features, month_min, on='customer_id', how='left')
+
+        # date_max = grouped.visit_date.max().rename('date_max')
+        # meta_features = pd.merge(meta_features, date_max, on='customer_id', how='left')
+
+        # date_median = grouped.visit_date.median().astype(int).rename('date_median')
+        # meta_features = pd.merge(meta_features, date_median, on='customer_id', how='left')
+
+        # date_min = grouped.visit_date.min().rename('date_min')
+        # meta_features = pd.merge(meta_features, date_min, on='customer_id', how='left')
+
+        num_unique_dishes = grouped.dish_name.nunique().rename('num_unique_dishes')
+        meta_features = pd.merge(meta_features, num_unique_dishes, on='customer_id', how='left')
+
+        num_unique_dishes = np.log(1 + grouped.dish_name.nunique()).rename('log_num_unique_dishes')
+        meta_features = pd.merge(meta_features, num_unique_dishes, on='customer_id', how='left')
+
+        num_unique_checks = grouped.startdatetime.nunique().rename('num_unique_checks')
+        meta_features = pd.merge(meta_features, num_unique_checks, on='customer_id', how='left')
+
+        num_unique_checks_log = np.log(1 + grouped.startdatetime.count()).rename(
+            'num_unique_checks_log')
+        meta_features = pd.merge(meta_features, num_unique_checks_log, on='customer_id', how='left')
+
+        num_unique_years = grouped.visit_year.nunique().rename('num_unique_years')
+        meta_features = pd.merge(meta_features, num_unique_years, on='customer_id', how='left')
+
+        num_unique_months = grouped.visit_month.nunique().rename('num_unique_months')
+        meta_features = pd.merge(meta_features, num_unique_months, on='customer_id', how='left')
+
+        num_unique_dates = grouped.visit_date.nunique().rename('num_unique_dates')
+        meta_features = pd.merge(meta_features, num_unique_dates, on='customer_id', how='left')
+
+        n_unique_checks_gt_5 = (num_unique_checks > 5).rename('n_unique_checks_gt_5')
+        meta_features = pd.merge(meta_features, n_unique_checks_gt_5, on='customer_id', how='left')
+
+        n_unique_checks_gt_10 = (num_unique_checks > 10).rename('n_unique_checks_gt_10')
+        meta_features = pd.merge(meta_features, n_unique_checks_gt_10, on='customer_id', how='left')
+
+        n_unique_checks_gt_20 = (num_unique_checks > 20).rename('n_unique_checks_gt_20')
+        meta_features = pd.merge(meta_features, n_unique_checks_gt_20, on='customer_id', how='left')
+
+        n_unique_days_gt_5 = (num_unique_dates > 5).rename('n_unique_days_gt_5')
+        meta_features = pd.merge(meta_features, n_unique_days_gt_5, on='customer_id', how='left')
+
+        n_unique_days_gt_10 = (num_unique_dates > 10).rename('n_unique_days_gt_10')
+        meta_features = pd.merge(meta_features, n_unique_days_gt_10, on='customer_id', how='left')
+
+        n_unique_days_gt_20 = (num_unique_dates > 20).rename('n_unique_days_gt_20')
+        meta_features = pd.merge(meta_features, n_unique_days_gt_20, on='customer_id', how='left')
+
+        num_different_formats = grouped.format_name.nunique().rename('num_different_formats')
+        meta_features = pd.merge(meta_features, num_different_formats, on='customer_id', how='left')
 
         return meta_features \
             .set_index('customer_id') \
